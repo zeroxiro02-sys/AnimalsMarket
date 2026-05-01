@@ -24,6 +24,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'hayvon-market-ultra-secret-key-2024')
 
+# Fix HTTPS behind Railway proxy
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# ─── Google OAuth ──────────────────────────────────────────────
+
 # ─── Google OAuth ──────────────────────────────────────────────
 oauth = OAuth(app)
 google = oauth.register(
