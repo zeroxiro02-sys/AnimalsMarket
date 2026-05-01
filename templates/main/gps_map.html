@@ -1,0 +1,390 @@
+{% extends 'main/base.html' %}{% block title %}🗺️ GPS Xarita — E'lonlar joylashuvi{% endblock %}
+{% block head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+.gps-page { display:flex; flex-direction:column; height:calc(100vh - 64px); }
+.gps-toolbar {
+  background:var(--bg2); border-bottom:1px solid var(--bdr);
+  padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex-shrink:0;
+}
+.gps-toolbar h2 { font-size:1.1rem; font-weight:800; margin:0; white-space:nowrap; }
+.gps-filter {
+  padding:7px 12px; border-radius:10px; border:1.5px solid var(--bdr);
+  background:var(--bg); color:var(--txt); font-size:.85rem; outline:none;
+}
+.gps-filter:focus { border-color:#3b82f6; }
+.gps-stat {
+  margin-left:auto; display:flex; gap:10px; align-items:center;
+}
+.gps-badge {
+  background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.3);
+  color:#3b82f6; border-radius:100px; padding:4px 14px; font-size:.82rem; font-weight:700;
+}
+.gps-main { display:flex; flex:1; overflow:hidden; }
+.gps-sidebar {
+  width:300px; flex-shrink:0; background:var(--bg2); border-right:1px solid var(--bdr);
+  overflow-y:auto; display:flex; flex-direction:column;
+}
+@media(max-width:700px){ .gps-sidebar{ display:none; } .gps-sidebar.mobile-show{ display:flex; position:fixed; inset:0; z-index:9999; width:100%; } }
+.gps-sidebar-head {
+  padding:14px 16px; border-bottom:1px solid var(--bdr); font-size:.88rem; font-weight:800;
+  position:sticky; top:0; background:var(--bg2); z-index:1;
+}
+.gps-list { flex:1; padding:8px; }
+.gps-item {
+  display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px;
+  cursor:pointer; transition:background .15s; border:1.5px solid transparent; margin-bottom:4px;
+}
+.gps-item:hover { background:rgba(59,130,246,.07); border-color:rgba(59,130,246,.2); }
+.gps-item.active { background:rgba(59,130,246,.12); border-color:#3b82f6; }
+.gps-item .gi-emoji { font-size:1.6rem; flex-shrink:0; }
+.gps-item .gi-info { flex:1; min-width:0; }
+.gps-item .gi-title { font-size:.85rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gps-item .gi-meta  { font-size:.75rem; color:var(--mt); margin-top:2px; }
+.gps-item .gi-price { font-size:.82rem; font-weight:800; color:var(--pri); white-space:nowrap; }
+
+/* Map */
+#gmap { flex:1; }
+.leaflet-popup-content-wrapper {
+  background:var(--bg2) !important; color:var(--txt) !important;
+  border:1px solid var(--bdr) !important; border-radius:16px !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.15) !important;
+}
+.leaflet-popup-tip { background:var(--bg2) !important; }
+.map-popup { min-width:200px; }
+.map-popup .mp-emoji { font-size:2rem; text-align:center; margin-bottom:6px; }
+.map-popup .mp-title { font-weight:800; font-size:.95rem; margin-bottom:4px; }
+.map-popup .mp-price { color:#22c55e; font-weight:700; font-size:1.05rem; margin-bottom:6px; }
+.map-popup .mp-meta  { font-size:.78rem; color:var(--mt); line-height:1.6; }
+.map-popup .mp-btn   { display:block; text-align:center; background:#3b82f6; color:#fff; padding:8px; border-radius:10px; font-weight:700; font-size:.82rem; margin-top:10px; text-decoration:none; }
+.map-popup .mp-btn:hover { background:#2563eb; }
+
+/* Region overlay */
+.region-panel {
+  position:absolute; top:70px; right:10px; z-index:1000;
+  background:var(--bg2); border:1px solid var(--bdr); border-radius:16px;
+  padding:12px; max-height:60vh; overflow-y:auto; width:200px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);
+}
+.region-panel h4 { font-size:.82rem; font-weight:800; color:var(--mt); text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; }
+.region-btn {
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%; padding:7px 10px; border-radius:10px; border:1px solid transparent;
+  background:transparent; cursor:pointer; font-size:.82rem; text-align:left; color:var(--txt);
+  transition:all .15s;
+}
+.region-btn:hover { background:rgba(59,130,246,.08); border-color:rgba(59,130,246,.2); }
+.region-btn.active { background:rgba(59,130,246,.12); border-color:#3b82f6; color:#3b82f6; font-weight:700; }
+.region-btn .rb-count { font-size:.75rem; background:rgba(59,130,246,.15); color:#3b82f6; border-radius:100px; padding:1px 7px; }
+
+/* No GPS badge */
+.no-gps-banner {
+  background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(245,158,11,.07));
+  border:1px solid rgba(251,191,36,.3); border-radius:14px; padding:12px 16px;
+  display:flex; align-items:center; gap:10px; margin:8px;
+}
+.no-gps-banner .icon { font-size:1.4rem; flex-shrink:0; }
+.no-gps-banner .txt { font-size:.8rem; line-height:1.4; }
+
+/* Mobile toggle */
+.gps-mobile-toggle { display:none; }
+@media(max-width:700px){
+  .gps-mobile-toggle { display:flex; align-items:center; gap:6px; padding:7px 12px; background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.3); border-radius:10px; font-size:.82rem; font-weight:700; color:#3b82f6; cursor:pointer; }
+}
+
+/* Heatmap style markers */
+.custom-marker { border:none; background:none; }
+.cm-inner {
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; border:2.5px solid #fff; box-shadow:0 3px 10px rgba(0,0,0,.25);
+  background:#3b82f6; transition:transform .2s;
+}
+.cm-inner:hover { transform:scale(1.15); }
+.cm-inner.premium { background:linear-gradient(135deg,#f59e0b,#ef4444); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gps-page">
+
+  <!-- Toolbar -->
+  <div class="gps-toolbar">
+    <h2>🗺️ GPS Xarita</h2>
+    <select class="gps-filter" id="animalFilter" onchange="applyFilters()">
+      <option value="">Barcha hayvonlar</option>
+      <option value="sigir">🐄 Sigir</option>
+      <option value="qoy">🐑 Qo'y</option>
+      <option value="echki">🐐 Echki</option>
+      <option value="ot">🐴 Ot</option>
+      <option value="tovuq">🐓 Tovuq</option>
+      <option value="o_rdak">🦆 O'rdak</option>
+      <option value="g_oz">🪿 G'oz</option>
+      <option value="quyon">🐇 Quyon</option>
+      <option value="qoramol">🐂 Qoramol</option>
+      <option value="tuyoqli">🐪 Tuya</option>
+      <option value="boshqa">🐾 Boshqa</option>
+    </select>
+    <select class="gps-filter" id="regionFilter" onchange="applyFilters()">
+      <option value="">Barcha viloyatlar</option>
+      <option>Toshkent sh.</option><option>Toshkent vil.</option>
+      <option>Samarqand</option><option>Buxoro</option>
+      <option>Andijon</option><option>Farg'ona</option>
+      <option>Namangan</option><option>Qashqadaryo</option>
+      <option>Surxondaryo</option><option>Xorazm</option>
+      <option>Navoiy</option><option>Jizzax</option>
+      <option>Sirdaryo</option><option>Qoraqalpog'iston</option>
+    </select>
+    <button class="gps-mobile-toggle" onclick="toggleSidebar()">📋 Ro'yxat</button>
+    <div class="gps-stat">
+      <span class="gps-badge" id="countBadge">0 ta e'lon</span>
+      <span class="gps-badge" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:#16a34a" id="gpsBadge">0 ta GPS</span>
+    </div>
+  </div>
+
+  <div class="gps-main">
+    <!-- Sidebar -->
+    <div class="gps-sidebar" id="sidebar">
+      <div class="gps-sidebar-head" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📋 E'lonlar ro'yxati</span>
+        <button onclick="toggleSidebar()" style="display:none;background:none;border:none;cursor:pointer;font-size:1.2rem" id="sidebarClose">✕</button>
+      </div>
+      <div class="no-gps-banner">
+        <div class="icon">📍</div>
+        <div class="txt">GPS joylashuvi bo'lmagan e'lonlar ham ro'yxatda ko'rinadi, lekin xaritada belgisi yo'q</div>
+      </div>
+      <div class="gps-list" id="sidebarList"></div>
+    </div>
+
+    <!-- Map -->
+    <div id="gmap"></div>
+
+    <!-- Region panel (floating) -->
+    <div class="region-panel" id="regionPanel">
+      <h4>🏘 Viloyatlar</h4>
+      <div id="regionList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── Data from Flask ──
+const ALL_LISTINGS = {{ listings_json|safe }};
+
+// ── Uzbekistan region centers (lat/lng) ──
+const UZ_REGIONS = {
+  'Toshkent sh.':     { lat:41.2995, lng:69.2401, zoom:12 },
+  'Toshkent vil.':    { lat:41.1139, lng:69.4076, zoom:10 },
+  'Samarqand':        { lat:39.6270, lng:66.9750, zoom:10 },
+  'Buxoro':           { lat:39.7747, lng:64.4286, zoom:10 },
+  'Andijon':          { lat:40.7829, lng:72.3440, zoom:11 },
+  "Farg'ona":         { lat:40.3842, lng:71.7843, zoom:10 },
+  'Namangan':         { lat:41.0011, lng:71.6725, zoom:11 },
+  'Qashqadaryo':      { lat:38.8600, lng:65.7830, zoom:9  },
+  'Surxondaryo':      { lat:37.9400, lng:67.5700, zoom:9  },
+  'Xorazm':           { lat:41.5500, lng:60.6300, zoom:9  },
+  'Navoiy':           { lat:40.0840, lng:65.3792, zoom:9  },
+  'Jizzax':           { lat:40.1158, lng:67.8422, zoom:10 },
+  'Sirdaryo':         { lat:40.8390, lng:68.6640, zoom:10 },
+  "Qoraqalpog'iston": { lat:43.7830, lng:59.0000, zoom:7  },
+};
+
+// Default scatter coords per region (for listings without GPS)
+const REGION_SCATTER = {
+  'Toshkent sh.':     [[41.310,69.240],[41.295,69.255],[41.285,69.230],[41.302,69.280],[41.318,69.260]],
+  'Toshkent vil.':    [[41.12,69.40],[41.05,69.50],[41.20,69.55],[41.18,69.35],[41.08,69.42]],
+  'Samarqand':        [[39.63,66.97],[39.65,66.92],[39.60,67.05],[39.58,66.88],[39.70,67.00]],
+  'Buxoro':           [[39.77,64.43],[39.80,64.38],[39.72,64.50],[39.68,64.44],[39.85,64.40]],
+  'Andijon':          [[40.78,72.34],[40.80,72.40],[40.75,72.28],[40.72,72.35],[40.82,72.36]],
+  "Farg'ona":         [[40.38,71.78],[40.40,71.82],[40.35,71.74],[40.42,71.90],[40.30,71.72]],
+  'Namangan':         [[41.00,71.67],[41.02,71.72],[40.98,71.62],[40.95,71.68],[41.05,71.70]],
+  'Qashqadaryo':      [[38.86,65.78],[38.90,65.90],[38.78,65.70],[39.00,65.85],[38.82,65.60]],
+  'Surxondaryo':      [[37.94,67.57],[37.98,67.62],[37.88,67.52],[38.00,67.45],[37.82,67.65]],
+  'Xorazm':           [[41.55,60.63],[41.60,60.70],[41.48,60.58],[41.52,60.75],[41.62,60.55]],
+  'Navoiy':           [[40.08,65.38],[40.12,65.42],[40.05,65.30],[40.00,65.50],[40.15,65.25]],
+  'Jizzax':           [[40.12,67.84],[40.15,67.90],[40.08,67.78],[40.20,67.86],[40.05,67.88]],
+  'Sirdaryo':         [[40.84,68.66],[40.88,68.72],[40.80,68.60],[40.76,68.68],[40.92,68.58]],
+  "Qoraqalpog'iston": [[43.78,59.00],[43.60,59.50],[44.00,58.50],[43.40,60.00],[44.20,58.80]],
+};
+
+function getCoords(item, idx) {
+  if (item.lat && item.lng) return [item.lat, item.lng];
+  const scatter = REGION_SCATTER[item.region];
+  if (scatter) return scatter[idx % scatter.length];
+  return [41.3, 69.2]; // fallback Toshkent
+}
+
+// ── Map init ──
+const map = L.map('gmap', {
+  center: [41.38, 64.0],
+  zoom: 6,
+  zoomControl: true
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 19
+}).addTo(map);
+
+// ── Markers layer ──
+let markersLayer = L.layerGroup().addTo(map);
+let currentListings = [...ALL_LISTINGS];
+let activeMarker = null;
+
+function fmtPrice(v) {
+  return Number(v).toLocaleString('uz-UZ') + ' so\'m';
+}
+
+function buildMarker(item, coords, hasGPS) {
+  const color = hasGPS ? '#22c55e' : '#3b82f6';
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div class="cm-inner" style="background:${color};font-size:1.1rem">${item.emoji}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20]
+  });
+  const marker = L.marker(coords, { icon });
+  const popup = L.popup({ className: '', maxWidth: 260 }).setContent(`
+    <div class="map-popup">
+      <div class="mp-emoji">${item.emoji}</div>
+      <div class="mp-title">${item.title}</div>
+      <div class="mp-price">💰 ${fmtPrice(item.price)}</div>
+      <div class="mp-meta">
+        📍 ${item.region}${item.district ? ', '+item.district : ''}<br>
+        👤 ${item.user}<br>
+        ${hasGPS ? '✅ Aniq GPS joylashuv' : '📌 Taxminiy joylashuv (viloyat markazi)'}
+      </div>
+      <a href="/listing/${item.id}" class="mp-btn" target="_blank">🔍 E'lonni ko'rish →</a>
+    </div>
+  `);
+  marker.bindPopup(popup);
+  return marker;
+}
+
+function renderMarkers(items) {
+  markersLayer.clearLayers();
+  let gpsCount = 0;
+  const countByRegion = {};
+
+  items.forEach((item, idx) => {
+    const hasGPS = !!(item.lat && item.lng);
+    if (hasGPS) gpsCount++;
+    const coords = getCoords(item, idx);
+    const m = buildMarker(item, coords, hasGPS);
+    markersLayer.addLayer(m);
+    countByRegion[item.region] = (countByRegion[item.region]||0)+1;
+  });
+
+  document.getElementById('countBadge').textContent = items.length + ' ta e\'lon';
+  document.getElementById('gpsBadge').textContent   = gpsCount + ' ta GPS';
+
+  buildRegionList(countByRegion);
+  buildSidebar(items);
+}
+
+function buildSidebar(items) {
+  const list = document.getElementById('sidebarList');
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = '<p style="text-align:center;color:var(--mt);padding:24px;font-size:.85rem">Hech narsa topilmadi</p>';
+    return;
+  }
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'gps-item';
+    div.setAttribute('data-id', item.id);
+    const hasGPS = !!(item.lat && item.lng);
+    div.innerHTML = `
+      <div class="gi-emoji">${item.emoji}</div>
+      <div class="gi-info">
+        <div class="gi-title">${item.title}</div>
+        <div class="gi-meta">📍 ${item.region}${item.district?', '+item.district:''}${hasGPS?' <span style="color:#22c55e">✅</span>':' <span style="color:#94a3b8">📌</span>'}</div>
+      </div>
+      <div class="gi-price">${fmtPrice(item.price)}</div>
+    `;
+    div.onclick = () => focusItem(item);
+    list.appendChild(div);
+  });
+}
+
+function focusItem(item) {
+  document.querySelectorAll('.gps-item').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.gps-item[data-id="${item.id}"]`);
+  if (el) { el.classList.add('active'); el.scrollIntoView({block:'nearest'}); }
+  const idx = currentListings.indexOf(item);
+  const coords = getCoords(item, idx < 0 ? 0 : idx);
+  map.setView(coords, 13, {animate:true});
+  markersLayer.eachLayer(m => {
+    if (Math.abs(m.getLatLng().lat - coords[0]) < 0.001 &&
+        Math.abs(m.getLatLng().lng - coords[1]) < 0.001) {
+      m.openPopup();
+    }
+  });
+}
+
+function buildRegionList(countByRegion) {
+  const rl = document.getElementById('regionList');
+  rl.innerHTML = '<button class="region-btn active" onclick="filterRegion(\'\',this)">🇺🇿 Barchasi</button>';
+  Object.entries(UZ_REGIONS).forEach(([name]) => {
+    const cnt = countByRegion[name] || 0;
+    const btn = document.createElement('button');
+    btn.className = 'region-btn';
+    btn.innerHTML = `${name} <span class="rb-count">${cnt}</span>`;
+    btn.onclick = function(){ filterRegion(name, this); };
+    rl.appendChild(btn);
+  });
+}
+
+function filterRegion(name, btn) {
+  document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('regionFilter').value = name;
+  applyFilters();
+  if (name && UZ_REGIONS[name]) {
+    const r = UZ_REGIONS[name];
+    map.setView([r.lat, r.lng], r.zoom, {animate:true});
+  } else {
+    map.setView([41.38,64.0], 6, {animate:true});
+  }
+}
+
+function applyFilters() {
+  const animalF = document.getElementById('animalFilter').value;
+  const regionF = document.getElementById('regionFilter').value;
+  currentListings = ALL_LISTINGS.filter(item => {
+    if (animalF && item.emoji) {
+      // match by checking title keywords or just trust slug from data
+    }
+    if (regionF && item.region !== regionF) return false;
+    return true;
+  });
+  // Animal filter by slug — add slug to data via backend is cleaner, but we approximate:
+  // We stored emoji, let's match animal filter via the select's emoji map
+  if (animalF) {
+    const emojiMap = {
+      sigir:'🐄',qoy:'🐑',echki:'🐐',ot:'🐴',tovuq:'🐓',
+      o_rdak:'🦆',g_oz:'🪿',quyon:'🐇',qoramol:'🐂',tuyoqli:'🐪',boshqa:'🐾'
+    };
+    const em = emojiMap[animalF];
+    if (em) currentListings = currentListings.filter(i => i.emoji === em);
+  }
+  renderMarkers(currentListings);
+}
+
+// ── Initial render ──
+renderMarkers(currentListings);
+
+// ── Mobile sidebar ──
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const closeBtn = document.getElementById('sidebarClose');
+  sb.classList.toggle('mobile-show');
+  closeBtn.style.display = sb.classList.contains('mobile-show') ? 'block' : 'none';
+}
+
+// Fix map size after load
+setTimeout(() => map.invalidateSize(), 300);
+</script>
+{% endblock %}

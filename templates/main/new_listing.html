@@ -1,0 +1,114 @@
+{% extends 'main/base.html' %}{% block title %}Yangi e'lon{% endblock %}
+{% block content %}
+<div class="pw">
+<div class="cn" style="padding-top:32px;padding-bottom:60px;max-width:760px">
+  <h1 style="font-size:30px;font-weight:800;margin-bottom:6px" data-anim>➕ Yangi <span class="gt">e'lon</span> joylash</h1>
+  <p style="color:var(--mt);margin-bottom:28px" data-anim>2 daqiqada e'lon joylaing va xaridorlar bilan bog'laning</p>
+  <div class="sc afu">
+    <form method="post">
+      <div class="fgroup"><label class="flabel">📝 E'lon sarlavhasi *</label><input name="title" class="fctrl" placeholder="Masalan: Sut sigiri — Holstein zoti" required/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="fgroup"><label class="flabel">🐾 Hayvon turi *</label>
+          <select name="animal_slug" class="fctrl" required>
+            <option value="">Tanlang</option>
+            {% for slug,emoji,name in animal_types %}<option value="{{ slug }}">{{ emoji }} {{ name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fgroup"><label class="flabel">💰 Narx (so'm) *</label><input name="price" type="number" class="fctrl" placeholder="12000000" required/></div>
+        <div class="fgroup"><label class="flabel">📍 Viloyat *</label>
+          <select name="region" class="fctrl" required>
+            <option value="">Tanlang</option>
+            {% for r in regions %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fgroup"><label class="flabel">🏘 Tuman</label><input name="district" class="fctrl" placeholder="Tuman nomi"/></div>
+        <div class="fgroup"><label class="flabel">🔢 Soni</label><input name="count" type="number" value="1" min="1" class="fctrl"/></div>
+        <div class="fgroup"><label class="flabel">🕐 Yoshi</label><input name="age" class="fctrl" placeholder="3 yosh, 2-4 yosh..."/></div>
+        <div class="fgroup"><label class="flabel">♂️ Jinsi</label>
+          <select name="gender" class="fctrl"><option value="">Nomalum</option><option>Erkak</option><option>Urg'ochi</option><option>Aralash</option></select>
+        </div>
+        <div class="fgroup"><label class="flabel">🧬 Zoti</label><input name="breed" class="fctrl" placeholder="Holstein, Gissar..."/></div>
+        <div class="fgroup"><label class="flabel">⚖️ Vazni</label><input name="weight" class="fctrl" placeholder="350 kg"/></div>
+      </div>
+      <div class="fgroup"><label class="flabel">📄 Tavsif</label><textarea name="description" class="fctrl" rows="4" placeholder="Hayvon haqida qo'shimcha ma'lumot..."></textarea></div>
+
+      <!-- GPS Location Picker -->
+      <div class="fgroup" style="border:1.5px solid var(--bdr);border-radius:14px;padding:16px;background:var(--bg)">
+        <label class="flabel">📍 GPS Joylashuv <span style="font-weight:400;color:var(--mt)">(ixtiyoriy)</span></label>
+        <div style="font-size:.82rem;color:var(--mt);margin-bottom:10px">GPS qo'shsangiz, xaritada aniq joy ko'rinadi va xaridorlar osongina topadi</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" onclick="getMyLocation()" id="gpsBtn" style="padding:8px 16px;border-radius:10px;border:1.5px solid rgba(59,130,246,.4);background:rgba(59,130,246,.08);color:#3b82f6;font-weight:700;font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <span id="gpsBtnIcon">📡</span> Joylashuvimni aniqlash
+          </button>
+          <span id="gpsStatus" style="font-size:.82rem;color:var(--mt)"></span>
+        </div>
+        <div id="gpsMapPicker" style="display:none;margin-top:12px">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+          <div id="pickMap" style="height:220px;border-radius:12px;overflow:hidden;border:1.5px solid var(--bdr)"></div>
+          <div style="font-size:.78rem;color:var(--mt);margin-top:6px">📌 Xaritada joyni bosib o'zgartiring</div>
+        </div>
+        <input type="hidden" name="latitude"  id="lat_inp">
+        <input type="hidden" name="longitude" id="lng_inp">
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button type="submit" class="btn btn-p btn-lg">🚀 E'lonni joylash</button>
+        <a href="/my-listings" class="btn btn-o btn-lg">Bekor qilish</a>
+      </div>
+    </form>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+let pickMap = null, pickMarker = null;
+function initPickMap(lat, lng) {
+  document.getElementById('gpsMapPicker').style.display = 'block';
+  if (!pickMap) {
+    pickMap = L.map('pickMap').setView([lat, lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(pickMap);
+    pickMarker = L.marker([lat, lng], {draggable:true}).addTo(pickMap);
+    pickMarker.on('dragend', e => setCoords(e.target.getLatLng().lat, e.target.getLatLng().lng));
+    pickMap.on('click', e => { pickMarker.setLatLng(e.latlng); setCoords(e.latlng.lat, e.latlng.lng); });
+    setTimeout(() => pickMap.invalidateSize(), 200);
+  } else {
+    pickMap.setView([lat, lng], 13);
+    pickMarker.setLatLng([lat, lng]);
+  }
+  setCoords(lat, lng);
+}
+function setCoords(lat, lng) {
+  document.getElementById('lat_inp').value = lat.toFixed(6);
+  document.getElementById('lng_inp').value = lng.toFixed(6);
+  document.getElementById('gpsStatus').textContent = '✅ ' + lat.toFixed(4) + ', ' + lng.toFixed(4);
+  document.getElementById('gpsStatus').style.color = '#22c55e';
+}
+function getMyLocation() {
+  const btn = document.getElementById('gpsBtn');
+  document.getElementById('gpsBtnIcon').textContent = '⏳';
+  btn.disabled = true;
+  document.getElementById('gpsStatus').textContent = 'Joylashuv aniqlanmoqda...';
+  if (!navigator.geolocation) {
+    document.getElementById('gpsStatus').textContent = '❌ GPS qo\'llab-quvvatlanmaydi';
+    btn.disabled = false; return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      btn.disabled = false;
+      document.getElementById('gpsBtnIcon').textContent = '✅';
+      btn.style.borderColor = 'rgba(34,197,94,.4)'; btn.style.color = '#22c55e';
+      initPickMap(pos.coords.latitude, pos.coords.longitude);
+    },
+    () => {
+      document.getElementById('gpsStatus').textContent = 'GPS ruxsati yo\'q. Xaritadan tanlang:';
+      btn.disabled = false;
+      document.getElementById('gpsBtnIcon').textContent = '📡';
+      initPickMap(41.3, 69.2);
+    },
+    {enableHighAccuracy:true, timeout:10000}
+  );
+}
+</script>
+  </div>
+</div>
+</div>
+<style>@media(max-width:600px){form > div[style*="grid"]{grid-template-columns:1fr!important}}</style>
+{% endblock %}
