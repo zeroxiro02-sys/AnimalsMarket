@@ -1,0 +1,155 @@
+{% extends 'main/base.html' %}{% block title %}Ro'yxatdan o'tish<style>
+.google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:50px;border:2px solid var(--bdr);background:var(--wh);color:var(--dk);font-size:15px;font-weight:600;cursor:pointer;transition:all .22s;font-family:var(--fn);margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.google-btn:hover{border-color:#4285F4;box-shadow:0 4px 16px rgba(66,133,244,.2);transform:translateY(-1px)}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--mt);font-size:13px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+</style>
+<script>
+function googleAuthNotice(){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:14px;z-index:9999;font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px';
+  t.innerHTML='<span style="font-size:18px">🔧</span> Google OAuth sozlanmoqda — tez orada!';
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+</script>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-box afu" style="max-width:540px">
+    <div class="auth-emoji abng">🌱</div>
+    <h1 class="auth-tit" data-i18n="reg_title">Ro'yxatdan o'tish</h1>
+    <p class="auth-sub" data-i18n="reg_sub">Bepul hisob oching va savdoni boshlang!</p>
+
+    <!-- Google signup -->
+    <button type="button" class="google-btn" onclick="googleAuthNotice()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Google orqali ro'yxatdan o'tish
+    </button>
+    <div class="auth-divider"><span>yoki</span></div>
+
+    <form method="post" id="regForm" autocomplete="on">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="fgroup">
+          <label class="flabel" data-i18n="uname_l">👤 Login *</label>
+          <input name="username" class="fctrl" id="regUser" placeholder="login123" required autocomplete="username"
+            oninput="validateUser(this)"/>
+          <p class="fhint">Faqat lotin harflari va raqamlar</p>
+          <p class="ferr" id="userErr" style="display:none;color:#ef4444;font-size:12px;margin-top:4px"></p>
+        </div>
+        <div class="fgroup">
+          <label class="flabel" data-i18n="fn_l">🙍 To'liq ism *</label>
+          <input name="full_name" class="fctrl" placeholder="Ismingiz Familiyangiz" required autocomplete="name"/>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="fgroup">
+          <label class="flabel" data-i18n="ph_l">📞 Telefon *</label>
+          <input name="phone" class="fctrl" placeholder="+998 90 000 00 00" required autocomplete="tel"
+            oninput="this.value=this.value.replace(/[^+\d\s]/g,'')"/>
+        </div>
+        <div class="fgroup">
+          <label class="flabel" data-i18n="reg_l">📍 Viloyat *</label>
+          <select name="region" class="fctrl" required>
+            <option value="" data-i18n="sel_reg">Tanlang</option>
+            {% for r in regions %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="fgroup">
+          <label class="flabel" data-i18n="pass_l">🔒 Parol *</label>
+          <div style="position:relative">
+            <input name="password" id="regPwd" type="password" class="fctrl" placeholder="Kamida 6 ta belgi"
+              required autocomplete="new-password" oninput="checkPwdStrength(this)" style="padding-right:48px"/>
+            <button type="button" class="eye-btn" onclick="togglePwd2('regPwd',this)">👁</button>
+          </div>
+          <div class="pwd-strength" id="pwdBar"><div id="pwdFill"></div></div>
+          <p class="fhint" id="pwdHint">Kamida 6 ta belgi</p>
+        </div>
+        <div class="fgroup">
+          <label class="flabel" data-i18n="conf_pass">🔒 Parolni takrorlang *</label>
+          <div style="position:relative">
+            <input name="password2" id="regPwd2" type="password" class="fctrl" placeholder="Parolni qaytaring"
+              required autocomplete="new-password" oninput="checkMatch()" style="padding-right:48px"/>
+            <button type="button" class="eye-btn" onclick="togglePwd2('regPwd2',this)">👁</button>
+          </div>
+          <p class="ferr" id="matchErr" style="display:none;color:#ef4444;font-size:12px;margin-top:4px">Parollar mos emas</p>
+        </div>
+      </div>
+      <div class="reg-role-sel">
+        <p style="font-weight:600;margin-bottom:8px">👤 Siz kim sifatida ro'yxatdan o'tmoqchisiz?</p>
+        <div class="role-opts">
+          <label class="role-opt">
+            <input type="radio" name="role" value="buyer" checked/>
+            <span class="role-icon">🛒</span>
+            <span class="role-lbl">Xaridor</span>
+          </label>
+          <label class="role-opt">
+            <input type="radio" name="role" value="seller"/>
+            <span class="role-icon">🏪</span>
+            <span class="role-lbl">Sotuvchi</span>
+          </label>
+          <label class="role-opt">
+            <input type="radio" name="role" value="vet"/>
+            <span class="role-icon">🩺</span>
+            <span class="role-lbl">Veterinar</span>
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-p" style="width:100%;padding:14px;font-size:16px;margin-top:4px" data-i18n="reg_btn">Ro'yxatdan o'tish →</button>
+    </form>
+    <p style="text-align:center;font-size:14px;color:var(--mt);margin-top:18px">
+      <span data-i18n="have_acc">Hisobingiz bormi?</span>
+      <a href="/login" style="color:var(--g);font-weight:700" data-i18n="login">Kirish</a>
+    </p>
+  </div>
+</div>
+<script>
+function togglePwd2(id,btn){
+  const inp=document.getElementById(id);
+  inp.type=inp.type==='password'?'text':'password';
+  btn.textContent=inp.type==='text'?'🙈':'👁';
+}
+function checkPwdStrength(inp){
+  const v=inp.value, fill=document.getElementById('pwdFill'),hint=document.getElementById('pwdHint');
+  let s=0;
+  if(v.length>=6)s++;if(v.length>=10)s++;if(/[A-Z]/.test(v))s++;if(/[0-9]/.test(v))s++;if(/[^a-zA-Z0-9]/.test(v))s++;
+  const cols=['#ef4444','#f97316','#eab308','#22c55e','#16a34a'];
+  const labels=['Juda zaif','Zaif','O\'rtacha','Kuchli','Juda kuchli'];
+  fill.style.width=(s/5*100)+'%';fill.style.background=cols[s-1]||cols[0];
+  hint.textContent=v.length?labels[s-1]||'Kamida 6 ta belgi':'Kamida 6 ta belgi';
+}
+function checkMatch(){
+  const p=document.getElementById('regPwd').value,p2=document.getElementById('regPwd2').value;
+  const err=document.getElementById('matchErr');
+  err.style.display=(p2&&p!==p2)?'block':'none';
+}
+function validateUser(inp){
+  const err=document.getElementById('userErr');
+  const v=inp.value;
+  if(v&&!/^[a-zA-Z0-9_]+$/.test(v)){
+    err.textContent='Faqat lotin harflari, raqamlar va _';err.style.display='block';
+  } else err.style.display='none';
+}
+document.getElementById('regForm').addEventListener('submit',function(e){
+  const p=document.getElementById('regPwd').value,p2=document.getElementById('regPwd2').value;
+  if(p!==p2){e.preventDefault();document.getElementById('matchErr').style.display='block';return;}
+  const u=document.getElementById('regUser').value;
+  if(!/^[a-zA-Z0-9_]+$/.test(u)){e.preventDefault();document.getElementById('userErr').textContent='Noto\'g\'ri login format';document.getElementById('userErr').style.display='block';}
+});
+</script>
+<style>
+.google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:50px;border:2px solid var(--bdr);background:var(--wh);color:var(--dk);font-size:15px;font-weight:600;cursor:pointer;transition:all .22s;font-family:var(--fn);margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.google-btn:hover{border-color:#4285F4;box-shadow:0 4px 16px rgba(66,133,244,.2);transform:translateY(-1px)}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--mt);font-size:13px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+</style>
+<script>
+function googleAuthNotice(){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:14px;z-index:9999;font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px';
+  t.innerHTML='<span style="font-size:18px">🔧</span> Google OAuth sozlanmoqda — tez orada!';
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+</script>
+{% endblock %}

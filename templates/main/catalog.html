@@ -1,0 +1,392 @@
+{% extends 'main/base.html' %}
+{% block title %}Katalog{% endblock %}
+{% block head %}
+<style>
+/* ══ PRICE CORNER LABELS ══ */
+.price-corner-labels {
+  position: fixed;
+  top: calc(var(--nav) + 16px);
+  right: 20px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pcl-item {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card-bg); border: 1.5px solid var(--bdr);
+  border-radius: 14px; padding: 8px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  text-decoration: none; color: inherit;
+  transition: all .22s; font-size: 12px; font-weight: 700;
+  white-space: nowrap; backdrop-filter: blur(12px);
+}
+.pcl-item:hover { transform: translateX(-5px); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.pcl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pcl-cheap { color: #16a34a; }
+.pcl-cheap .pcl-dot { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.5); }
+.pcl-cheap:hover { background: rgba(34,197,94,.06) !important; border-color: rgba(34,197,94,.4) !important; }
+.pcl-mid { color: #d97706; }
+.pcl-mid .pcl-dot { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.5); }
+.pcl-mid:hover { background: rgba(245,158,11,.06) !important; border-color: rgba(245,158,11,.4) !important; }
+.pcl-pop { color: #7c3aed; }
+.pcl-pop .pcl-dot { background: #8b5cf6; box-shadow: 0 0 6px rgba(139,92,246,.5); }
+.pcl-pop:hover { background: rgba(139,92,246,.06) !important; border-color: rgba(139,92,246,.4) !important; }
+
+/* ══ MODERN CATALOG CARDS ══ */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  gap: 20px;
+}
+
+.cat-card {
+  position: relative; border-radius: 22px; overflow: hidden;
+  background: var(--card-bg); border: 1.5px solid var(--bdr);
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s;
+  display: block; text-decoration: none; color: inherit;
+}
+.cat-card:hover {
+  transform: translateY(-7px) scale(1.012);
+  box-shadow: 0 18px 44px rgba(0,0,0,.14);
+}
+
+.cat-img-wrap {
+  position: relative; aspect-ratio: 16/11; overflow: hidden; background: var(--bg2);
+}
+.cat-img-wrap img { width:100%;height:100%;object-fit:cover;transition:transform .45s ease;display:block; }
+.cat-card:hover .cat-img-wrap img { transform: scale(1.08); }
+.cat-emoji-fb {
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:70px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.15));
+}
+.cat-img-wrap.premium::after {
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,transparent 50%,rgba(200,133,42,.15));
+}
+
+/* Price badge — bottom-left */
+.cat-price-badge {
+  position:absolute;bottom:12px;left:12px;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(10px);
+  color:#fff;font-size:13px;font-weight:900;
+  padding:5px 11px;border-radius:11px;z-index:3;
+  border:1px solid rgba(255,255,255,.12);letter-spacing:-.2px;
+}
+
+/* Tier label — top-left */
+.cat-tier { position:absolute;top:12px;left:12px;z-index:3; }
+.cat-tier span {
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:800;padding:4px 10px;
+  border-radius:20px;text-transform:uppercase;letter-spacing:.5px;
+  backdrop-filter:blur(8px);
+}
+.tier-cheap { background:rgba(34,197,94,.18);color:#16a34a;border:1px solid rgba(34,197,94,.35); }
+.tier-mid   { background:rgba(245,158,11,.18);color:#b45309;border:1px solid rgba(245,158,11,.35); }
+.tier-prem  { background:rgba(200,133,42,.22);color:#92400e;border:1px solid rgba(200,133,42,.45); }
+
+/* Bron badge */
+.cat-bron {
+  position:absolute;top:12px;right:12px;z-index:4;
+  background:rgba(245,158,11,.92);backdrop-filter:blur(6px);
+  color:#fff;font-size:10px;font-weight:800;
+  padding:3px 9px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.25);letter-spacing:.3px;
+}
+
+/* Card body */
+.cat-body { padding:14px 16px 16px; }
+.cat-top-row { display:flex;align-items:center;gap:6px;margin-bottom:9px; }
+.cat-type-chip {
+  display:flex;align-items:center;gap:4px;
+  background:var(--bg2);border-radius:8px;
+  padding:3px 8px;font-size:11px;font-weight:700;color:var(--mt);
+  border:1px solid var(--bdr);
+}
+.cat-views { margin-left:auto;font-size:11px;color:var(--mt2); }
+.cat-title {
+  font-size:15px;font-weight:800;color:var(--dk);
+  line-height:1.3;margin-bottom:9px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.cat-tags { display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px; }
+.cat-tag {
+  font-size:11px;color:var(--mt);background:var(--bg2);
+  border-radius:7px;padding:3px 8px;border:1px solid var(--bdr);
+}
+.cat-footer {
+  display:flex;align-items:center;gap:8px;
+  padding-top:10px;border-top:1px solid var(--bdr);
+}
+.cat-av {
+  width:26px;height:26px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--g),var(--gd));
+  color:#fff;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+.cat-seller { font-size:12px;font-weight:700;color:var(--mt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.cat-pro { font-size:10px;font-weight:800;color:var(--g);background:var(--gl);padding:2px 7px;border-radius:6px;border:1px solid var(--gg); }
+
+/* Fav btn */
+.cat-fav {
+  position:absolute;bottom:62px;right:12px;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(6px);
+  border:1.5px solid rgba(200,133,42,.2);border-radius:50%;
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.1);
+  z-index:5;cursor:pointer;transition:transform .2s;
+}
+.cat-fav:hover { transform:scale(1.18); }
+
+/* ══ MODERN FILTER BAR ══ */
+.filter-bar {
+  background: var(--card-bg);
+  border: 1.5px solid var(--bdr);
+  border-radius: 20px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.07);
+  backdrop-filter: blur(12px);
+}
+.filter-row-1 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-row-1 .finput {
+  height: 44px;
+  border-radius: 12px;
+  border: 1.5px solid var(--bdr);
+  background: var(--bg2);
+  padding: 0 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--dk);
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+}
+.filter-row-1 .finput:focus {
+  border-color: var(--g);
+  box-shadow: 0 0 0 3px rgba(var(--gs),.12);
+}
+.finput-search { flex: 1; min-width: 170px; }
+.finput-type   { min-width: 140px; }
+.finput-region { min-width: 165px; }
+.finput-price  { width: 110px; }
+.filter-btn-search {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg,var(--g),var(--gd));
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(var(--gs),.3);
+  transition: opacity .2s, transform .15s;
+}
+.filter-btn-search:hover { opacity: .92; transform: translateY(-1px); }
+.filter-btn-clear {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--bdr);
+  background: var(--card-bg);
+  color: var(--mt);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: all .18s;
+}
+.filter-btn-clear:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+.filter-divider {
+  height: 1px;
+  background: var(--bdr);
+  margin: 14px 0;
+}
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sort-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mt);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 0 4px;
+}
+
+/* Sort chips */
+.sort-chip {
+  padding: 7px 16px; border-radius: 50px; font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--bdr); color: var(--mt); background: var(--card-bg);
+  text-decoration: none; transition: all .18s;
+}
+.sort-chip:hover, .sort-chip.on {
+  background: var(--g); color: #fff; border-color: var(--g);
+  box-shadow: 0 3px 12px rgba(var(--gs),.3);
+}
+
+@media(max-width:640px){
+  .price-corner-labels { right:10px;top:auto;bottom:80px; }
+  .cat-grid { grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px; }
+  .cat-title { font-size:13px; }
+  .cat-price-badge { font-size:11px;padding:4px 9px; }
+  .filter-row-1 { flex-direction: column; }
+  .filter-row-1 .finput, .finput-search, .finput-type, .finput-region, .finput-price { width: 100% !important; min-width: unset !important; }
+  .filter-btn-search, .filter-btn-clear { width: 100%; justify-content: center; text-align: center; }
+}
+
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- ══ PRICE CORNER LABELS (fixed corner) ══ -->
+<div class="price-corner-labels">
+  <a href="?sort=price_asc{% if q %}&q={{ q }}{% endif %}{% if atype %}&type={{ atype }}{% endif %}{% if reg %}&region={{ reg }}{% endif %}" class="pcl-item pcl-cheap">
+    <div class="pcl-dot"></div>
+    💚 Arzon
+  </a>
+  <a href="?sort=new{% if q %}&q={{ q }}{% endif %}{% if atype %}&type={{ atype }}{% endif %}{% if reg %}&region={{ reg }}{% endif %}" class="pcl-item pcl-mid">
+    <div class="pcl-dot"></div>
+    🟡 O'rtacha
+  </a>
+  <a href="?sort=popular{% if q %}&q={{ q }}{% endif %}{% if atype %}&type={{ atype }}{% endif %}{% if reg %}&region={{ reg }}{% endif %}" class="pcl-item pcl-pop">
+    <div class="pcl-dot"></div>
+    🔥 Mashhur
+  </a>
+</div>
+
+<div class="pw">
+<div class="cn" style="padding-top:32px;padding-bottom:60px">
+
+  <div style="margin-bottom:24px" data-anim>
+    <h1 style="font-size:32px;font-weight:800;color:var(--dk)">📋 <span data-i18n="cat_title">Katalog</span> <span class="gt">E'lonlar</span></h1>
+    <p style="color:var(--mt);margin-top:4px">Jami {{ total }} <span data-i18n="cat_sub">ta e'lon topildi</span></p>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar" data-anim>
+    <form method="get" action="/catalog">
+      <div class="filter-row-1">
+        <input name="q" value="{{ q }}" class="finput finput-search" placeholder="🔍 Hayvon qidirish..."/>
+        <select name="type" class="finput finput-type">
+          <option value="">🐾 Barcha turlar</option>
+          {% for slug,emoji,name in animal_types %}
+          <option value="{{ slug }}" {% if atype==slug %}selected{% endif %}>{{ emoji }} {{ name }}</option>
+          {% endfor %}
+        </select>
+        <select name="region" class="finput finput-region">
+          <option value="">📍 Barcha viloyatlar</option>
+          {% for r in regions %}
+          <option value="{{ r }}" {% if reg==r %}selected{% endif %}>📍 {{ r }}</option>
+          {% endfor %}
+        </select>
+        <input name="min" value="{{ minp }}" class="finput finput-price" placeholder="💰 Min narx" type="number"/>
+        <input name="max" value="{{ maxp }}" class="finput finput-price" placeholder="💎 Max narx" type="number"/>
+        <button type="submit" class="filter-btn-search">🔍 Qidirish</button>
+        <a href="/catalog" class="filter-btn-clear">✕ Tozalash</a>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="sort-row">
+        <span class="sort-label">Saralash:</span>
+        {% for val,label in [('new','🕐 Yangi'),('price_asc','💚 Arzon'),('price_desc','💰 Qimmat')] %}
+        <a href="?{% for k,v in request.args.items() %}{% if k!='sort' and k!='page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}sort={{ val }}"
+           class="sort-chip {% if sort==val %}on{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Animal type quick filters -->
+  <div class="frow" style="margin-bottom:24px;gap:8px;flex-wrap:wrap" data-anim>
+    <a href="/catalog" class="chip {% if not atype %}on{% endif %}">🐾 Hammasi</a>
+    {% for slug,emoji,name in animal_types %}
+    <a href="/catalog?type={{ slug }}{% if q %}&q={{ q }}{% endif %}{% if reg %}&region={{ reg }}{% endif %}"
+       class="chip {% if atype==slug %}on{% endif %}">{{ emoji }} {{ name }}</a>
+    {% endfor %}
+  </div>
+
+  {% if items %}
+  <div class="cat-grid">
+    {% for item in items %}
+    {% set CPHOTOS = {'sigir':'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&q=80','qoy':'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=500&q=80','echki':'https://images.unsplash.com/photo-1524024973431-2ad916746881?w=500&q=80','ot':'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=500&q=80','tovuq':'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=500&q=80','o_rdak':'https://images.unsplash.com/photo-1548802673-380ab8ebc7b7?w=500&q=80','g_oz':'https://images.unsplash.com/photo-1553808606-7cf03e08ede9?w=500&q=80','quyon':'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=500&q=80','qoramol':'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=500&q=80','tuyoqli':'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=500&q=80','boshqa':'https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=500&q=80'} %}
+    {% if item.price < 2000000 %}{% set tier='cheap' %}{% set tlbl='💚 Arzon' %}
+    {% elif item.price < 8000000 %}{% set tier='mid' %}{% set tlbl="🟡 O'rtacha" %}
+    {% else %}{% set tier='prem' %}{% set tlbl='⭐ Premium' %}{% endif %}
+
+    <div style="position:relative;animation-delay:{{ loop.index0*0.045 }}s" data-anim>
+      <a href="/listing/{{ item.id }}" class="cat-card">
+        <div class="cat-img-wrap {% if item.is_premium %}premium{% endif %}">
+          {% set first_photo = (item.photos | from_json | first) if item.photos else none %}
+          <img src="{{ first_photo if first_photo else CPHOTOS.get(item.animal_slug, CPHOTOS['boshqa']) }}" alt="{{ item.title }}" loading="lazy"
+               onerror="this.src='{{ CPHOTOS.get(item.animal_slug, CPHOTOS['boshqa']) }}'">
+          <div class="cat-emoji-fb" style="display:none">{{ item.animal_emoji }}</div>
+
+          <div class="cat-price-badge">{{ item.price|fmt }} so'm</div>
+          <div class="cat-tier"><span class="tier-{{ tier }}">{{ tlbl }}</span></div>
+          {% if item.is_reserved %}<div class="cat-bron">🔒 Bronlangan</div>{% endif %}
+        </div>
+
+        <div class="cat-body">
+          <div class="cat-top-row">
+            <div class="cat-type-chip">{{ item.animal_emoji }} {{ item.animal_name }}</div>
+            <div class="cat-views">👁 {{ item.views }}</div>
+          </div>
+          <div class="cat-title">{{ item.title }}</div>
+          <div class="cat-tags">
+            <span class="cat-tag">📍 {{ item.region }}</span>
+            {% if item.age %}<span class="cat-tag">🕐 {{ item.age }}</span>{% endif %}
+            {% if item.count > 1 %}<span class="cat-tag">🔢 {{ item.count }} bosh</span>{% endif %}
+            {% if item.gender %}<span class="cat-tag">{{ item.gender }}</span>{% endif %}
+          </div>
+          <div class="cat-footer">
+            <div class="cat-av">{{ (item.full_name or item.username)[0]|upper }}</div>
+            <div class="cat-seller">{{ item.full_name or item.username }}{% if item.is_verified %} ✅{% endif %}</div>
+            {% if item.is_premium %}<span class="cat-pro">PRO</span>{% endif %}
+          </div>
+        </div>
+      </a>
+
+      {% if me %}
+      <button class="fav-btn cat-fav btn btn-icon" data-lid="{{ item.id }}">
+        <span class="fic">🤍</span>
+      </button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if pages > 1 %}
+  <div class="pg" style="margin-top:40px">
+    {% if page > 1 %}<a href="?{% for k,v in request.args.items() %}{% if k!='page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page-1 }}" class="pg-btn">‹</a>{% endif %}
+    {% for p in range(1, pages+1) %}
+    <a href="?{% for k,v in request.args.items() %}{% if k!='page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ p }}" class="pg-btn {% if p==page %}on{% endif %}">{{ p }}</a>
+    {% endfor %}
+    {% if page < pages %}<a href="?{% for k,v in request.args.items() %}{% if k!='page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page+1 }}" class="pg-btn">›</a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div style="text-align:center;padding:80px 20px" data-anim>
+    <div style="font-size:80px;margin-bottom:20px">🔍</div>
+    <h2 style="font-size:24px;font-weight:700;color:var(--dk);margin-bottom:10px">E'lonlar topilmadi</h2>
+    <p style="color:var(--mt);margin-bottom:24px">Boshqa kalit so'z yoki filtrlarni sinab ko'ring</p>
+    <a href="/catalog" class="btn btn-p">Barcha e'lonlar</a>
+  </div>
+  {% endif %}
+
+</div>
+</div>
+{% endblock %}
